@@ -1,0 +1,324 @@
+ruby dev env (ubuntu)
+
+Goals - by the end of this, you should be able to
+ - set up a simple project on your ubuntu
+ - download dependencies for that proj
+ - run tests for the proj
+ 	-- including mocking dependencies
+ - run the proj itself
+
+
+
+*******  Get Ruby on Ubuntu  *******
+
+Resources
+	https://www.mikekasberg.com/blog/2020/09/27/set-up-a-ruby-dev-environment.html
+	https://github.com/rbenv/rbenv-installer
+
+Important: need to make sure you don't have a copy of ruby already installed
+	$ rbenv --version 
+	$ ruby --version	
+	$ sudo apt-get purge ruby  :: (to uninstall ruby)
+
+Important Note {
+	- I had a version of rbenv & ruby installed under "/usr/lib" which was messing me up until I rm -rf the 2 folders
+	- apt-get kept offering to get the programs for me ... but I think the listed scripts are much better (ie AVOID sudo apt-get install rbenv and sudo apt-get install ruby)
+}
+
+alt get rbenv {
+	Confirm you have git & curl
+		$ git --version
+		$ curl --version
+
+	Download (if needed)
+		$ sudo apt-get install git curl
+
+	Use curl to download rbenv
+		$ curl -fsSL curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash
+ | bash
+
+	Add rbenv to ~/.bashrc (will add to path & init)
+	<<<<<<<<<snip>>>>>>>>>>
+	if [ -d "$HOME/.rbenv/bin" ]; then
+	    PATH="$HOME/.rbenv/bin:$PATH"
+	    eval "$(rbenv init -)"
+	fi
+	<<<<<<<<</snip>>>>>>>>>>
+
+	reload bashrc
+	$ source ~/.bashrc
+
+	Confirm install w/ Friendly Error Msgs for rbenv
+		$ curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-doctor | bash
+}
+
+
+Look at the manual first (optional)
+	$ rbenv help install
+
+Look at what Ruby Versions are avail
+	$ rbenv install --list
+
+Install ruby version (pick highest stable) 3.0.2
+	$ rbenv install <version>
+
+Set installed version as global version
+	$ rbenv global <version>
+	$ rbenv version (to ck it worked)
+	$ ruby --version (to ck it worked)
+
+
+*********  Set up Proj Struc  **********
+Resource: 
+	https://stackoverflow.com/questions/614309/ideal-ruby-project-structure
+	https://github.com/Dwin357/tic_tac_toe/tree/master/lib
+
+<Proj-root> 			this might be named "app" based on convention ... unclear to me
+  bin/					only needed for user scripts, if present
+  lib/
+  	<a,b,c>/	 		classes
+  spec/
+  	<a,b,c>/	 		tests
+  app.rb 				entry point for app
+  README.md
+  Gemfile 				dependencies map
+  Gemfile.lock 			dependencie version regiestry
+
+
+************  Set up Bundler  **********
+Resource: https://bundler.io/
+
+Install bundler
+	$ gem install bundler
+
+	NOTE: if this is setting things under /usr or asking for sudo permissions, that means you did not set up the previous part correctly
+
+Set bundle file at project root (filename: Gemfile)
+<<<<<<<example>>>>>>>>>
+source 'https://rubygems.org'
+gem 'rspec'
+<<<<<<</example>>>>>>>>
+
+Download dependencies for proj
+	$ bundle install
+
+********  Hello World Class  *******
+<<<<<<<<<<<lib/number_calculator.rb>>>>>>>>>>>
+class NumberCalculator
+
+	def add(a,b)
+		a+b
+	end
+
+	def subtract(a,b)
+		a-b
+	end
+
+	def multiply(a,b)
+		a*b
+	end
+
+	def divide(a,b)
+		a / b
+	end
+end
+<<<<<<<<<<<</lib/number_calculator.rb>>>>>>>>>>>
+<<<<<<<<<<<app.rb (at root)>>>>>>>>>>>>>>
+require_relative 'lib/string_calculator'
+require_relative 'lib/number_calculator'
+require_relative 'lib/string_parser'
+
+puts StringCalculator.new(NumberCalculator.new, StringParser.new).calculate(ARGV[0],ARGV[1],ARGV[2])
+<<<<<<<<<<</app.rb (at root)>>>>>>>>>>>>>>
+<<<<<<<<<<<lib/string_parser.rb>>>>>>>>>>>>>
+class StringParser
+
+	def convertToInt(input)
+		input.to_i
+	end
+	
+end
+<<<<<<<<<<</lib/string_parser.rb>>>>>>>>>>>>>
+<<<<<<<<<<<lib/string_calculator.rb>>>>>>>>>>
+#an import
+require_relative 'number_calculator'
+
+#a comment
+
+# a class
+class StringCalculator
+
+	# getter + setter
+	attr_reader :num_calc
+
+	# constructor
+	def initialize(num_calc, parser)
+
+		# instance var initialized to a value
+		@string_parser = parser
+		@num_calc = num_calc
+	end
+
+
+	# instance method
+	def calculate(a,operation,b)
+		a = @string_parser.convertToInt(a) # using an instance var to access obj
+		b = @string_parser.convertToInt(b)
+		case operation
+		when '+'
+			num_calc.add(a,b) # using a getter to access obj
+		when '-'
+			num_calc.subtract(a,b)
+		when '*'
+			num_calc.multiply(a,b)
+		when '/'
+			num_calc.divide(a,b)
+		else
+			raise "Unrecognized operation(supported[+ - * /]):#{operation}"
+		end
+	end
+
+##
+# Things to remember...
+# No object types (everyone thought generics were hard anyway)
+# No void return types
+# Last line of a method implicitly returns if not declared earlier
+# Null is nil
+# Single quote strings are norm, double quote just to escap
+# Not having curly braces is painful
+# Not having semi's is weird
+# String interpelation is "blah #{whatever_var} blah"
+# use snake_case instead of CamelCase
+# only need to give a method () when passing a var (both calling & defining)
+
+end
+<<<<<<<<<<</lib/string_calculator.rb>>>>>>>>>>
+
+Run main class w/ cmd ln arg (from proj root)
+	$ bundle exec ruby app.rb 2 + 3
+
+******** do specs  **********
+resource: https://semaphoreci.com/community/tutorials/getting-started-with-rspec
+
+<<<<<<<<<<<number_calculator_spec.rb>>>>>>>>>>>
+require 'number_calculator'
+
+describe NumberCalculator do
+
+	attr_accessor :tested
+
+	before do
+		@tested = NumberCalculator.new
+	end
+
+	context "given 3 and 5" do
+		a = 3
+		b = 5
+
+		describe "add" do
+			it "returns 8" do
+				expected = 8
+				expect(tested.add(a,b)).to eq(expected)
+			end
+		end
+
+		describe "subtract" do
+			it "returns -2" do
+				expected = -2
+				expect(tested.subtract(a,b)).to eq(expected)
+			end
+		end
+
+		describe "multiply" do
+			it "returns 15" do
+				expected = 15
+				expect(tested.multiply(a,b)).to eq(expected)
+			end
+		end
+
+		describe "divide" do
+			it "returns 0" do
+				expected = 0
+				expect(tested.divide(a,b)).to eq(expected)
+			end
+		end				
+	end
+end
+<<<<<<<<<<</number_calculator_spec.rb>>>>>>>>>>>
+
+<<<<<<<<<<<.rspec (at root)>>>>>>>>>>>
+--color
+--require spec_helper
+<<<<<<<<<<</.rspec (at root)>>>>>>>>>>>
+
+<<<<<<<<<<<spec/spec_helper.rb>>>>>>>>>>>
+RSpec.configure do |config|
+ # This setting enables warnings. It's recommended, but in some cases may
+  # be too noisy due to issues in dependencies.
+  config.warnings = true
+
+  # Many RSpec users commonly either run the entire suite or an individual
+  # file, and it's useful to allow more verbose output when running an
+  # individual spec file.
+  if config.files_to_run.one?
+    # Use the documentation formatter for detailed output,
+    # unless a formatter has already been configured
+    # (e.g. via a command-line flag).
+    config.default_formatter = 'doc'
+  end
+
+  # Print the 10 slowest examples and example groups at the
+  # end of the spec run, to help surface which specs are running
+  # particularly slow.
+  config.profile_examples = 3
+
+  # Run specs in random order to surface order dependencies. If you find an
+  # order dependency and want to debug it, you can fix the order by providing
+  # the seed, which is printed after each run.
+  #     --seed 1234
+  config.order = :random
+end
+<<<<<<<<<<</spec/spec_helper.rb>>>>>>>>>>>
+
+Run Tests
+	$ bundle exec rspec
+
+
+********  do mocking  *********
+
+resource: https://stackoverflow.com/questions/10405396/rspec-mock-a-nested-dependency-injected-object
+
+<<<<<<<<<<<<<spec/string_calculator_spec.rb>>>>>>>>>>>>>>>
+require 'string_calculator'
+
+describe StringCalculator do
+
+	let(:mock_num_cal) { instance_double(NumberCalculator) }
+	let(:mock_string_parser) { instance_double(StringParser) }
+
+	context "when 3 + 5 is passed" do
+		arg_1 = "3"
+		a = 3
+		arg_2 = "+"
+		arg_3 = "5"
+		b = 5
+		ans = 8
+
+		it "correctly delegates to subsidiary classes" do
+			allow(mock_string_parser).to receive(:convertToInt).and_return(a,b)
+			allow(mock_num_cal).to receive(:add).and_return(ans)
+
+			## must pick either once per arg, or twice overall -- can't do both
+			expect(mock_string_parser).to receive(:convertToInt).with(arg_1).once
+			expect(mock_string_parser).to receive(:convertToInt).with(arg_3).once
+			# expect(mock_string_parser).to receive(:convertToInt).twice
+
+			expect(mock_num_cal).to receive(:add).with(a,b).once
+
+			tested = StringCalculator.new(mock_num_cal,mock_string_parser)
+
+			expect(tested.calculate(arg_1,arg_2,arg_3)).to eq(ans)
+		end
+	end
+end
+<<<<<<<<<<<<</spec/string_calculator_spec.rb>>>>>>>>>>>>>>>
